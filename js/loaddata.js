@@ -1,17 +1,7 @@
 /**
  * loaddata.js - โหลดข้อมูลจาก RESTful API มาแสดงผลใน HTML Elements
- * อ้างอิงตาม Slide 11, 12
  */
 
-/**
- * โหลดข้อมูลสำหรับ <select> Dropdown จาก API
- * @param {string} apiEndpoint - URL ของ API (เช่น 'api/categories', 'api/suppliers')
- * @param {string} elementId - ID ของ HTML <select> Element
- * @param {string} defaultText - ข้อความตัวเลือกแรก (เช่น '-- เลือก Category --')
- * @param {string|number|null} selectedValue - ค่าที่ต้องการให้เลือกเป็นค่าเริ่มต้น (optional)
- * @param {string} valueKey - ชื่อ Property ที่เป็น Value (ค่าเริ่มต้นตามตาราง: i_CategoryID หรือ i_SupplierID)
- * @param {string} textKey - ชื่อ Property ที่เป็น Label (ค่าเริ่มต้นตามตาราง: c_CategoryName หรือ c_SupplierName)
- */
 async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- กรุณาเลือก --', selectedValue = null, valueKey = null, textKey = null) {
     const selectElem = document.getElementById(elementId);
     if (!selectElem) {
@@ -19,31 +9,19 @@ async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- ก�
         return;
     }
 
-    // เซ็ตสถานะ Loading
     selectElem.innerHTML = `<option value="">กำลังโหลดข้อมูล...</option>`;
     selectElem.disabled = true;
 
     try {
-        // จัดการ URL รองรับทั้ง Pretty URL และ Fallback Query String
-        let url = apiEndpoint;
-        // ถ้าเป็น Relative path ให้เติม base URL ถ้าจำเป็น
+        let cleanRoute = apiEndpoint.replace(/^api\/?/, '/');
+        if (!cleanRoute.startsWith('/')) cleanRoute = '/' + cleanRoute;
+        let url = `api/index.php?route=${cleanRoute}`;
+
         const response = await fetch(url, {
             headers: {
                 'Accept': 'application/json'
             }
         });
-
-        if (!response.ok) {
-            // หากเรียก pretty url ไม่ผ่าน ลอง query route fallback
-            const fallbackUrl = 'api/index.php?route=' + apiEndpoint.replace(/^api\//, '/');
-            const fallbackRes = await fetch(fallbackUrl);
-            if (!fallbackRes.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-            }
-            const fallbackData = await fallbackRes.json();
-            renderOptions(selectElem, fallbackData.data || fallbackData, defaultText, selectedValue, valueKey, textKey);
-            return;
-        }
 
         const result = await response.json();
         const items = result.data || result;
@@ -57,9 +35,6 @@ async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- ก�
     }
 }
 
-/**
- * Helper เรนเดอร์ <option> ลงใน <select>
- */
 function renderOptions(selectElem, items, defaultText, selectedValue, valueKey, textKey) {
     if (!Array.isArray(items)) {
         console.error('Invalid items data:', items);
@@ -71,7 +46,6 @@ function renderOptions(selectElem, items, defaultText, selectedValue, valueKey, 
     let html = `<option value="">${defaultText}</option>`;
 
     items.forEach(item => {
-        // Auto-detect keys ถ้าไม่ได้ระบุ
         let val = '';
         let txt = '';
 
@@ -103,5 +77,4 @@ function renderOptions(selectElem, items, defaultText, selectedValue, valueKey, 
     selectElem.disabled = false;
 }
 
-// Export to window
 window.loadSelectOptions = loadSelectOptions;
