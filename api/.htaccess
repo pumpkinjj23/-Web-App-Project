@@ -1,0 +1,16 @@
+# ==========================================
+# RESTful API URL Rewrite (.htaccess)
+# อ้างอิงตาม Slide 9, 10, 13, 14
+# ==========================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /CPE66/Projack/api/
+
+    # หากมีการเข้าถึงไฟล์หรือโฟลเดอร์ที่มีอยู่จริง ไม่ต้อง rewrite
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # ส่งทุก Request ไปประมวลผลที่ index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
