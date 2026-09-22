@@ -32,21 +32,17 @@ const AppState = {
 
 // API Base Helpers
 const API = {
-    base: 'api',
-    
-    // Auto-detect endpoint with fallback
     async fetch(endpoint, options = {}) {
-        let url = `${this.base}/${endpoint}`;
+        let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        let url;
+        if (cleanEndpoint.includes('?')) {
+            const [path, query] = cleanEndpoint.split('?');
+            url = `api/index.php?route=${path}&${query}`;
+        } else {
+            url = `api/index.php?route=${cleanEndpoint}`;
+        }
         try {
             const res = await fetch(url, options);
-            if (!res.ok) {
-                // Try fallback query route if 404
-                if (res.status === 404) {
-                    const fallbackUrl = `api/index.php?route=/${endpoint}`;
-                    const fbRes = await fetch(fallbackUrl, options);
-                    return await fbRes.json();
-                }
-            }
             return await res.json();
         } catch (e) {
             console.error(`API Fetch error for ${endpoint}:`, e);
