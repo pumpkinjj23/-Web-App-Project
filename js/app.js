@@ -552,7 +552,8 @@ async function handleProductFormSubmit(e) {
             method = 'PUT';
         }
 
-        const response = await fetch(`api/${endpoint}`, {
+        let cleanRoute = endpoint.startsWith('/') ? endpoint :/${endpoint};
+const response = await fetch(api/index.php?route=${cleanRoute}, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -616,7 +617,7 @@ function deleteProduct(id, productName) {
                 }
             });
 
-            const result = await response.json();
+           const response = await fetch(api/index.php?route=/products/${id}, {
 
             if (result && result.success) {
                 Notify.success('ลบสินค้าสำเร็จ!', result.message || `ลบสินค้า ${productName} เรียบร้อยแล้ว`);
