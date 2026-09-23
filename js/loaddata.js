@@ -1,11 +1,20 @@
 /**
  * loaddata.js - โหลดข้อมูลจาก RESTful API มาแสดงผลใน HTML Elements
+ * อ้างอิงตาม Slide 11, 12
  */
 
+/**
+ * โหลดข้อมูลสำหรับ <select> Dropdown จาก API
+ * @param {string} apiEndpoint - URL ของ API (เช่น 'api/categories', 'api/suppliers')
+ * @param {string} elementId - ID ของ HTML <select> Element
+ * @param {string} defaultText - ข้อความตัวเลือกแรก (เช่น '-- เลือก Category --')
+ * @param {string|number|null} selectedValue - ค่าที่ต้องการให้เลือกเป็นค่าเริ่มต้น (optional)
+ * @param {string} valueKey - ชื่อ Property ที่เป็น Value
+ * @param {string} textKey - ชื่อ Property ที่เป็น Label
+ */
 async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- กรุณาเลือก --', selectedValue = null, valueKey = null, textKey = null) {
     const selectElem = document.getElementById(elementId);
     if (!selectElem) {
-        console.warn(`Element with ID '${elementId}' not found.`);
         return;
     }
 
@@ -23,21 +32,29 @@ async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- ก�
             }
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+        }
+
         const result = await response.json();
         const items = result.data || result;
 
         renderOptions(selectElem, items, defaultText, selectedValue, valueKey, textKey);
 
     } catch (error) {
-        console.error(`Error loading options for #${elementId} from ${apiEndpoint}:`, error);
-        selectElem.innerHTML = `<option value="">-- ไม่สามารถโหลดข้อมูลได้ --</option>`;
+        console.error(`Error loading options for #${elementId}:`, error);
+        selectElem.innerHTML = `<option value="">${defaultText}</option>`;
         selectElem.disabled = false;
     }
 }
 
+/**
+ * Helper เรนเดอร์ <option> ลงใน <select>
+ */
 function renderOptions(selectElem, items, defaultText, selectedValue, valueKey, textKey) {
+    if (!selectElem) return;
+
     if (!Array.isArray(items)) {
-        console.error('Invalid items data:', items);
         selectElem.innerHTML = `<option value="">${defaultText}</option>`;
         selectElem.disabled = false;
         return;
@@ -77,4 +94,5 @@ function renderOptions(selectElem, items, defaultText, selectedValue, valueKey, 
     selectElem.disabled = false;
 }
 
+// Export to window
 window.loadSelectOptions = loadSelectOptions;
