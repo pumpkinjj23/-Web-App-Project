@@ -61,8 +61,12 @@ class ProductController {
 
             // Query หลักพร้อม JOIN ตาราง หมวดหมู่ และ ผู้จัดจำหน่าย
             $sql = "SELECT p.i_ProductID, p.c_ProductName, p.i_SupplierID, p.i_CategoryID, p.c_Unit, p.i_Price,
-                           c.c_CategoryName, c.c_Description AS c_CategoryDescription,
-                           s.c_SupplierName, s.c_ContactName, s.c_Phone AS c_SupplierPhone, s.c_Country AS c_SupplierCountry
+                           COALESCE(c.c_CategoryName, 'ไม่ระบุ') AS c_CategoryName,
+                           COALESCE(c.c_Description, 'ไม่ระบุ') AS c_CategoryDescription,
+                           COALESCE(s.c_SupplierName, 'ไม่ระบุ') AS c_SupplierName,
+                           COALESCE(s.c_ContactName, 'ไม่ระบุ') AS c_ContactName,
+                           COALESCE(s.c_Phone, 'ไม่ระบุ') AS c_SupplierPhone,
+                           COALESCE(s.c_Country, 'ไม่ระบุ') AS c_SupplierCountry
                     FROM tb_products p
                     LEFT JOIN tb_categories c ON p.i_CategoryID = c.i_CategoryID
                     LEFT JOIN tb_suppliers s ON p.i_SupplierID = s.i_SupplierID
@@ -150,8 +154,14 @@ class ProductController {
     public function show($id) {
         try {
             $sql = "SELECT p.i_ProductID, p.c_ProductName, p.i_SupplierID, p.i_CategoryID, p.c_Unit, p.i_Price,
-                           c.c_CategoryName, c.c_Description AS c_CategoryDescription,
-                           s.c_SupplierName, s.c_ContactName, s.c_Phone AS c_SupplierPhone, s.c_Address AS c_SupplierAddress, s.c_City AS c_SupplierCity, s.c_Country AS c_SupplierCountry
+                           COALESCE(c.c_CategoryName, 'ไม่ระบุ') AS c_CategoryName,
+                           COALESCE(c.c_Description, 'ไม่ระบุ') AS c_CategoryDescription,
+                           COALESCE(s.c_SupplierName, 'ไม่ระบุ') AS c_SupplierName,
+                           COALESCE(s.c_ContactName, 'ไม่ระบุ') AS c_ContactName,
+                           COALESCE(s.c_Phone, 'ไม่ระบุ') AS c_SupplierPhone,
+                           COALESCE(s.c_Address, 'ไม่ระบุ') AS c_SupplierAddress,
+                           COALESCE(s.c_City, 'ไม่ระบุ') AS c_SupplierCity,
+                           COALESCE(s.c_Country, 'ไม่ระบุ') AS c_SupplierCountry
                     FROM tb_products p
                     LEFT JOIN tb_categories c ON p.i_CategoryID = c.i_CategoryID
                     LEFT JOIN tb_suppliers s ON p.i_SupplierID = s.i_SupplierID
