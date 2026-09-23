@@ -596,8 +596,8 @@ async function handleProductFormSubmit(e) {
             method = 'PUT';
         }
 
-        let cleanRoute = endpoint.startsWith('/') ? endpoint :/${endpoint};
-const response = await fetch(api/index.php?route=${cleanRoute}, {
+               let cleanRoute = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const response = await fetch(`api/index.php?route=${cleanRoute}`, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
