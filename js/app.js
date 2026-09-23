@@ -652,16 +652,17 @@ async function handleProductFormSubmit(e) {
  * ลบข้อมูลสินค้า
  */
 function deleteProduct(id, productName) {
-    Notify.confirmDelete(productName, async () => {
-        try {
-            const response = await fetch(`api/products/${id}`, {
+                try {
+            const response = await fetch(`api/index.php?route=/products/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json'
                 }
             });
 
-           const response = await fetch(api/index.php?route=/products/${id}, {
+            const result = await response.json();
+
+            if (result && result.success) {
 
             if (result && result.success) {
                 Notify.success('ลบสินค้าสำเร็จ!', result.message || `ลบสินค้า ${productName} เรียบร้อยแล้ว`);
