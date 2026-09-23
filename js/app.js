@@ -41,10 +41,46 @@ const API = {
         } else {
             url = `api/index.php?route=${cleanEndpoint}`;
         }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const fetchOptions = {
+            ...options,
+            signal: controller.signal,
+            headers: {
+                'Accept': 'application/json',
+                ...(options.headers || {})
+            }
+        };
+
         try {
-            const res = await fetch(url, options);
-            return await res.json();
+            const res = await fetch(url, fetchOptions);
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+                // ลอง Fallback ไปยัง direct API path
+                const fallbackUrl = `api${cleanEndpoint}`;
+                try {
+                    const fbRes = await fetch(fallbackUrl, fetchOptions);
+                    if (fbRes.ok) {
+                        return await fbRes.json();
+                    }
+                } catch (fbErr) {
+                    // ignore fallback error and parse main response
+                }
+            }
+
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch (jsonErr) {
+                console.error(`Invalid JSON received from ${url}:`, text);
+                throw new Error('เซิร์ฟเวอร์ส่งข้อมูลกลับมาในรูปแบบที่ไม่ถูกต้อง');
+            }
+
         } catch (e) {
+            clearTimeout(timeoutId);
             console.error(`API Fetch error for ${endpoint}:`, e);
             throw e;
         }
@@ -228,9 +264,13 @@ function loadInitialData() {
  * ดึงรายการสินค้าจาก API
  */
 async function fetchProducts() {
-    if (elements.tableLoading) elements.tableLoading.style.display = 'block';
-    if (elements.tableEmpty) elements.tableEmpty.style.display = 'none';
-    if (elements.productsTableBody) elements.productsTableBody.innerHTML = '';
+    const loadingElem = document.getElementById('tableLoading') || elements.tableLoading;
+    const emptyElem = document.getElementById('tableEmpty') || elements.tableEmpty;
+    const tbodyElem = document.getElementById('productsTableBody') || elements.productsTableBody;
+
+    if (loadingElem) loadingElem.style.display = 'block';
+    if (emptyElem) emptyElem.style.display = 'none';
+    if (tbodyElem) tbodyElem.innerHTML = '';
 
     try {
         // Query Params
@@ -245,21 +285,22 @@ async function fetchProducts() {
 
         const result = await API.fetch(`products?${params.toString()}`);
 
-        if (result && result.success) {
+        if (result && result.success && result.data) {
             AppState.products = result.data.items || [];
             AppState.stats = result.data.stats || AppState.stats;
 
             updateStatsDisplay();
             renderProductsTable();
         } else {
-            throw new Error(result.message || 'ไม่สามารถดึงข้อมูลได้');
+            throw new Error((result && result.message) ? result.message : 'ไม่สามารถดึงข้อมูลได้');
         }
 
     } catch (error) {
         console.error('Failed to fetch products:', error);
-        if (elements.productsTableBody) {
+        const currentTbody = document.getElementById('productsTableBody') || elements.productsTableBody;
+        if (currentTbody) {
             const errorMsg = error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล';
-            elements.productsTableBody.innerHTML = `
+            currentTbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="text-center py-5">
                         <div class="text-danger mb-2">
@@ -277,7 +318,8 @@ async function fetchProducts() {
             `;
         }
     } finally {
-        if (elements.tableLoading) elements.tableLoading.style.display = 'none';
+        const finalLoadingElem = document.getElementById('tableLoading') || elements.tableLoading;
+        if (finalLoadingElem) finalLoadingElem.style.display = 'none';
     }
 }
 
