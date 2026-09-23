@@ -24,7 +24,11 @@ async function loadSelectOptions(apiEndpoint, elementId, defaultText = '-- ก�
     try {
         let cleanRoute = apiEndpoint.replace(/^api\/?/, '/');
         if (!cleanRoute.startsWith('/')) cleanRoute = '/' + cleanRoute;
-        let url = `api/index.php?route=${cleanRoute}`;
+
+        // คำนวณ Base path ของเว็บแอปอัตโนมัติ
+        let loc = window.location.pathname;
+        let base = loc.substring(0, loc.lastIndexOf('/') + 1);
+        let url = `${base}api/index.php?route=${cleanRoute}`;
 
         const response = await fetch(url, {
             headers: {

@@ -34,16 +34,21 @@ const AppState = {
 const API = {
     async fetch(endpoint, options = {}) {
         let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        
+        // คำนวณ Base path อัตโนมัติ (เช่น /CPE66/Projack/ หรือ / บน Railway)
+        let loc = window.location.pathname;
+        let base = loc.substring(0, loc.lastIndexOf('/') + 1);
+
         let url;
         if (cleanEndpoint.includes('?')) {
             const [path, query] = cleanEndpoint.split('?');
-            url = `api/index.php?route=${path}&${query}`;
+            url = `${base}api/index.php?route=${path}&${query}`;
         } else {
-            url = `api/index.php?route=${cleanEndpoint}`;
+            url = `${base}api/index.php?route=${cleanEndpoint}`;
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
         const fetchOptions = {
             ...options,
@@ -58,26 +63,21 @@ const API = {
             const res = await fetch(url, fetchOptions);
             clearTimeout(timeoutId);
 
-            if (!res.ok) {
-                // ลอง Fallback ไปยัง direct API path
-                const fallbackUrl = `api${cleanEndpoint}`;
-                try {
-                    const fbRes = await fetch(fallbackUrl, fetchOptions);
-                    if (fbRes.ok) {
-                        return await fbRes.json();
-                    }
-                } catch (fbErr) {
-                    // ignore fallback error and parse main response
-                }
-            }
-
             const text = await res.text();
+            let json = null;
             try {
-                return JSON.parse(text);
+                json = JSON.parse(text);
             } catch (jsonErr) {
                 console.error(`Invalid JSON received from ${url}:`, text);
-                throw new Error('เซิร์ฟเวอร์ส่งข้อมูลกลับมาในรูปแบบที่ไม่ถูกต้อง');
+                throw new Error('เซิร์ฟเวอร์ส่งข้อมูลกลับมาในรูปแบบที่ไม่ถูกต้อง (กรุณาตรวจสอบว่า Web Server และ Database เชื่อมต่อเรียบร้อยแล้ว)');
             }
+
+            if (!res.ok) {
+                const msg = (json && json.message) ? json.message : `เซิร์ฟเวอร์ตอบกลับรหัสข้อผิดพลาด ${res.status}`;
+                throw new Error(msg);
+            }
+
+            return json;
 
         } catch (e) {
             clearTimeout(timeoutId);
@@ -327,28 +327,38 @@ async function fetchProducts() {
  * แสดงผลสถิติบนการ์ด Dashboard
  */
 function updateStatsDisplay() {
-    if (elements.statTotalProducts) elements.statTotalProducts.textContent = (AppState.stats.totalProducts || 0).toLocaleString();
-    if (elements.statAvgPrice) elements.statAvgPrice.textContent = '฿' + (AppState.stats.avgPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (elements.statMinPrice) elements.statMinPrice.textContent = '฿' + (AppState.stats.minPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (elements.statMaxPrice) elements.statMaxPrice.textContent = '฿' + (AppState.stats.maxPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (elements.totalCountBadge) elements.totalCountBadge.textContent = `${AppState.products.length} รายการ`;
+    const totalElem = document.getElementById('statTotalProducts') || elements.statTotalProducts;
+    const avgElem = document.getElementById('statAvgPrice') || elements.statAvgPrice;
+    const minElem = document.getElementById('statMinPrice') || elements.statMinPrice;
+    const maxElem = document.getElementById('statMaxPrice') || elements.statMaxPrice;
+    const countBadge = document.getElementById('totalCountBadge') || elements.totalCountBadge;
+
+    if (totalElem) totalElem.textContent = (AppState.stats.totalProducts || 0).toLocaleString();
+    if (avgElem) avgElem.textContent = '฿' + (AppState.stats.avgPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (minElem) minElem.textContent = '฿' + (AppState.stats.minPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (maxElem) maxElem.textContent = '฿' + (AppState.stats.maxPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (countBadge) countBadge.textContent = `${AppState.products.length} รายการ`;
 }
 
 /**
  * เรนเดอร์ข้อมูลลงในตาราง HTML
  */
 function renderProductsTable() {
-    const tbody = elements.productsTableBody;
+    const tbody = document.getElementById('productsTableBody') || elements.productsTableBody;
     if (!tbody) return;
 
+    const emptyElem = document.getElementById('tableEmpty') || elements.tableEmpty;
+    const pageInfoElem = document.getElementById('pageInfo') || elements.pageInfo;
+    const paginationElem = document.getElementById('paginationContainer') || elements.paginationContainer;
+
     if (AppState.products.length === 0) {
-        if (elements.tableEmpty) elements.tableEmpty.style.display = 'block';
-        if (elements.paginationContainer) elements.paginationContainer.innerHTML = '';
-        if (elements.pageInfo) elements.pageInfo.textContent = 'แสดง 0 จาก 0 รายการ';
+        if (emptyElem) emptyElem.style.display = 'block';
+        if (paginationElem) paginationElem.innerHTML = '';
+        if (pageInfoElem) pageInfoElem.textContent = 'แสดง 0 จาก 0 รายการ';
         return;
     }
 
-    if (elements.tableEmpty) elements.tableEmpty.style.display = 'none';
+    if (emptyElem) emptyElem.style.display = 'none';
 
     // Pagination slice
     const total = AppState.products.length;
@@ -430,11 +440,12 @@ function renderProductsTable() {
  * เรนเดอร์แถบ Pagination
  */
 function renderPagination(total, totalPages, currentPage, startIndex, endIndex) {
-    if (elements.pageInfo) {
-        elements.pageInfo.textContent = `แสดง ${startIndex + 1} - ${endIndex} จาก ${total} รายการ`;
+    const pageInfoElem = document.getElementById('pageInfo') || elements.pageInfo;
+    if (pageInfoElem) {
+        pageInfoElem.textContent = `แสดง ${startIndex + 1} - ${endIndex} จาก ${total} รายการ`;
     }
 
-    const container = elements.paginationContainer;
+    const container = document.getElementById('paginationContainer') || elements.paginationContainer;
     if (!container || totalPages <= 1) {
         if (container) container.innerHTML = '';
         return;
@@ -480,7 +491,6 @@ function renderPagination(total, totalPages, currentPage, startIndex, endIndex) 
 function changePage(page) {
     AppState.pagination.currentPage = page;
     renderProductsTable();
-    // เลื่อนหน้าจอขึ้นตารางเล็กน้อย
     document.getElementById('productsTableCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -498,26 +508,22 @@ function openAddProductModal() {
         elements.btnSaveProduct.innerHTML = `<i class="bi bi-save-fill me-1"></i> บันทึกข้อมูลสินค้า`;
     }
 
-    elements.productIdInput.value = '';
-    elements.productNameInput.value = '';
-    elements.productSupplierSelect.value = '';
-    elements.productCategorySelect.value = '';
-    elements.productUnitInput.value = '';
-    elements.productPriceInput.value = '';
+    if (elements.productForm) elements.productForm.reset();
+    if (elements.productIdInput) elements.productIdInput.value = '';
 
     const modal = new bootstrap.Modal(elements.productModal);
     modal.show();
 }
 
 /**
- * เปิด Modal แก้ไขสินค้า
+ * เปิด Modal แก้ไขสินค้าเดิม
  */
 async function openEditProductModal(id) {
     AppState.editingProductId = id;
     FormValidator.clearErrors(elements.productForm);
 
     if (elements.productModalTitle) {
-        elements.productModalTitle.innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i> แก้ไขข้อมูลสินค้า #${id}`;
+        elements.productModalTitle.innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i> แก้ไขข้อมูลสินค้า (ID: #${id})`;
     }
     if (elements.btnSaveProduct) {
         elements.btnSaveProduct.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> อัปเดตข้อมูล`;
@@ -527,12 +533,12 @@ async function openEditProductModal(id) {
         const result = await API.fetch(`products/${id}`);
         if (result && result.success) {
             const p = result.data;
-            elements.productIdInput.value = p.i_ProductID;
-            elements.productNameInput.value = p.c_ProductName;
-            elements.productSupplierSelect.value = p.i_SupplierID;
-            elements.productCategorySelect.value = p.i_CategoryID;
-            elements.productUnitInput.value = p.c_Unit;
-            elements.productPriceInput.value = p.i_Price;
+            if (elements.productIdInput) elements.productIdInput.value = p.i_ProductID;
+            if (elements.productNameInput) elements.productNameInput.value = p.c_ProductName || '';
+            if (elements.productSupplierSelect) elements.productSupplierSelect.value = p.i_SupplierID || '';
+            if (elements.productCategorySelect) elements.productCategorySelect.value = p.i_CategoryID || '';
+            if (elements.productUnitInput) elements.productUnitInput.value = p.c_Unit || '';
+            if (elements.productPriceInput) elements.productPriceInput.value = p.i_Price || '';
 
             const modal = new bootstrap.Modal(elements.productModal);
             modal.show();
@@ -564,10 +570,8 @@ async function handleProductFormSubmit(e) {
         action: isEdit ? 'update' : 'insert'
     };
 
-    // Client-side Validation ด้วย FormValidator
     const validation = FormValidator.validateProductForm(formData);
     if (!validation.isValid) {
-        // แสดง Inline Error ใต้ฟิลด์
         for (const [field, msg] of Object.entries(validation.errors)) {
             let elem = null;
             if (field === 'ProductName') elem = elements.productNameInput;
@@ -583,21 +587,14 @@ async function handleProductFormSubmit(e) {
         return;
     }
 
-    // ปิดปุ่มระหว่างบันทึก
     elements.btnSaveProduct.disabled = true;
     elements.btnSaveProduct.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> กำลังบันทึก...`;
 
     try {
-        let endpoint = 'products';
-        let method = 'POST';
+        let endpoint = isEdit ? `products/${productId}` : 'products';
+        let method = isEdit ? 'PUT' : 'POST';
 
-        if (isEdit) {
-            endpoint = `products/${productId}`;
-            method = 'PUT';
-        }
-
-               let cleanRoute = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const response = await fetch(`api/index.php?route=${cleanRoute}`, {
+        const result = await API.fetch(endpoint, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -606,24 +603,18 @@ async function handleProductFormSubmit(e) {
             body: JSON.stringify(formData)
         });
 
-        const result = await response.json();
-
         if (result && result.success) {
-            // ปิด Modal
             const modalInstance = bootstrap.Modal.getInstance(elements.productModal);
             if (modalInstance) modalInstance.hide();
 
-            // แจ้งเตือนความสำเร็จ
             Notify.success(
                 isEdit ? 'แก้ไขข้อมูลสำเร็จ!' : 'เพิ่มสินค้าสำเร็จ!',
                 result.message || (isEdit ? 'อัปเดตข้อมูลสินค้าเรียบร้อยแล้ว' : 'บันทึกข้อมูลสินค้าใหม่เรียบร้อยแล้ว')
             );
 
-            // โหลดข้อมูลตารางใหม่
             await fetchProducts();
 
         } else {
-            // Server-side validation errors
             if (result.data && result.data.errors) {
                 for (const [field, msg] of Object.entries(result.data.errors)) {
                     let elem = null;
@@ -652,17 +643,14 @@ async function handleProductFormSubmit(e) {
  * ลบข้อมูลสินค้า
  */
 function deleteProduct(id, productName) {
-                try {
-            const response = await fetch(`api/index.php?route=/products/${id}`, {
+    Notify.confirmDelete(productName, async () => {
+        try {
+            const result = await API.fetch(`products/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json'
                 }
             });
-
-            const result = await response.json();
-
-            if (result && result.success) {
 
             if (result && result.success) {
                 Notify.success('ลบสินค้าสำเร็จ!', result.message || `ลบสินค้า ${productName} เรียบร้อยแล้ว`);
