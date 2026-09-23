@@ -529,9 +529,25 @@ async function openEditProductModal(id) {
         elements.btnSaveProduct.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> อัปเดตข้อมูล`;
     }
 
+    // 1. ดึงข้อมูลจาก AppState ในเครื่องมาใส่ทันทีก่อน (เปิดปุ๊บติดปั๊บ 0ms)
+    const localProduct = AppState.products.find(p => String(p.i_ProductID) === String(id));
+    if (localProduct) {
+        if (elements.productIdInput) elements.productIdInput.value = localProduct.i_ProductID;
+        if (elements.productNameInput) elements.productNameInput.value = localProduct.c_ProductName || '';
+        if (elements.productSupplierSelect) elements.productSupplierSelect.value = localProduct.i_SupplierID || '';
+        if (elements.productCategorySelect) elements.productCategorySelect.value = localProduct.i_CategoryID || '';
+        if (elements.productUnitInput) elements.productUnitInput.value = localProduct.c_Unit || '';
+        if (elements.productPriceInput) elements.productPriceInput.value = localProduct.i_Price || '';
+    }
+
+    const modalElem = document.getElementById('productModal') || elements.productModal;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+    modal.show();
+
+    // 2. ดึงข้อมูลอัปเดตเพิ่มเติมจาก API ในพื้นหลัง
     try {
         const result = await API.fetch(`products/${id}`);
-        if (result && result.success) {
+        if (result && result.success && result.data) {
             const p = result.data;
             if (elements.productIdInput) elements.productIdInput.value = p.i_ProductID;
             if (elements.productNameInput) elements.productNameInput.value = p.c_ProductName || '';
@@ -539,14 +555,12 @@ async function openEditProductModal(id) {
             if (elements.productCategorySelect) elements.productCategorySelect.value = p.i_CategoryID || '';
             if (elements.productUnitInput) elements.productUnitInput.value = p.c_Unit || '';
             if (elements.productPriceInput) elements.productPriceInput.value = p.i_Price || '';
-
-            const modal = new bootstrap.Modal(elements.productModal);
-            modal.show();
-        } else {
-            Notify.error('เกิดข้อผิดพลาด', result.message || 'ไม่พบข้อมูลสินค้า');
         }
     } catch (e) {
-        Notify.error('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลสินค้ามาแก้ไขได้');
+        // หาก API เดี่ยวมีปัญหาแต่มีข้อมูลในตารางอยู่แล้ว ไม่ต้องแสดง Error รบกวนผู้ใช้
+        if (!localProduct) {
+            Notify.error('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลสินค้ามาแก้ไขได้');
+        }
     }
 }
 
@@ -669,9 +683,31 @@ function deleteProduct(id, productName) {
  * ดูรายละเอียดสินค้าใน Modal
  */
 async function viewProductDetails(id) {
+    // 1. ดึงข้อมูลจาก AppState ในเครื่องมาแสดงผลทันที (เปิดปุ๊บแสดงปั๊บ ไม่ต้องรอโหลด)
+    const localProduct = AppState.products.find(p => String(p.i_ProductID) === String(id));
+    if (localProduct) {
+        const price = parseFloat(localProduct.i_Price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('detailProductName').textContent = localProduct.c_ProductName || '-';
+        document.getElementById('detailProductId').textContent = `#${localProduct.i_ProductID}`;
+        document.getElementById('detailCategoryName').textContent = localProduct.c_CategoryName || '-';
+        document.getElementById('detailCategoryDesc').textContent = localProduct.c_CategoryDescription || '-';
+        document.getElementById('detailSupplierName').textContent = localProduct.c_SupplierName || '-';
+        document.getElementById('detailSupplierContact').textContent = localProduct.c_ContactName || '-';
+        document.getElementById('detailSupplierPhone').textContent = localProduct.c_SupplierPhone || '-';
+        document.getElementById('detailSupplierCountry').textContent = localProduct.c_SupplierCountry || '-';
+        document.getElementById('detailSupplierAddress').textContent = `${localProduct.c_SupplierAddress || ''} ${localProduct.c_SupplierCity || ''}`.trim() || '-';
+        document.getElementById('detailUnit').textContent = localProduct.c_Unit || '-';
+        document.getElementById('detailPrice').textContent = `฿${price}`;
+    }
+
+    const modalElem = document.getElementById('detailsModal') || elements.detailsModal;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+    modal.show();
+
+    // 2. ดึงข้อมูลเชิงลึกเพิ่มเติมจาก API ในพื้นหลัง
     try {
         const result = await API.fetch(`products/${id}`);
-        if (result && result.success) {
+        if (result && result.success && result.data) {
             const p = result.data;
             const price = parseFloat(p.i_Price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -686,14 +722,12 @@ async function viewProductDetails(id) {
             document.getElementById('detailSupplierAddress').textContent = `${p.c_SupplierAddress || ''} ${p.c_SupplierCity || ''}`.trim() || '-';
             document.getElementById('detailUnit').textContent = p.c_Unit || '-';
             document.getElementById('detailPrice').textContent = `฿${price}`;
-
-            const modal = new bootstrap.Modal(elements.detailsModal);
-            modal.show();
-        } else {
-            Notify.error('เกิดข้อผิดพลาด', result.message || 'ไม่พบข้อมูลสินค้า');
         }
     } catch (e) {
-        Notify.error('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลรายละเอียดสินค้าได้');
+        // หากมีข้อมูลแสดงอยู่แล้ว ไม่ต้องแสดง Popup error รบกวนผู้ใช้
+        if (!localProduct) {
+            Notify.error('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลรายละเอียดสินค้าได้');
+        }
     }
 }
 
