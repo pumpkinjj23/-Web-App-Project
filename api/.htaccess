@@ -1,11 +1,10 @@
 # ==========================================
 # RESTful API URL Rewrite (.htaccess)
-# อ้างอิงตาม Slide 9, 10, 13, 14
+# รองรับทั้ง Localhost และ Railway Cloud
 # ==========================================
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /CPE66/Projack/api/
 
     # หากมีการเข้าถึงไฟล์หรือโฟลเดอร์ที่มีอยู่จริง ไม่ต้อง rewrite
     RewriteCond %{REQUEST_FILENAME} !-f

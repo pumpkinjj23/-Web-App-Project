@@ -265,11 +265,20 @@ async function fetchProducts() {
     } catch (error) {
         console.error('Failed to fetch products:', error);
         if (elements.productsTableBody) {
+            const errorMsg = error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล';
             elements.productsTableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center py-4 text-danger">
-                        <i class="bi bi-exclamation-triangle-fill fs-3 d-block mb-2"></i>
-                        เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-danger mb-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-1 d-block mb-2 text-warning"></i>
+                            <h5 class="fw-bold text-white mb-2">ไม่สามารถโหลดข้อมูลสินค้าได้</h5>
+                            <p class="text-muted small mb-3">${errorMsg}</p>
+                        </div>
+                        <div class="d-inline-flex gap-2">
+                            <button onclick="fetchProducts()" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-arrow-clockwise me-1"></i> ลองใหม่อีกครั้ง
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
