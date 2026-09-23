@@ -213,22 +213,15 @@ function initEventListeners() {
 /**
  * โหลดข้อมูลเริ่มต้น (Categories, Suppliers, Products)
  */
-async function loadInitialData() {
-    try {
-        // โหลด Dropdown หมวดหมู่และผู้จัดจำหน่าย (ตาม Slide 11, 12)
-        await Promise.all([
-            loadSelectOptions('api/categories', 'filterCategory', 'หมวดหมู่ทั้งหมด (All Categories)'),
-            loadSelectOptions('api/suppliers', 'filterSupplier', 'ผู้จัดจำหน่ายทั้งหมด (All Suppliers)'),
-            loadSelectOptions('api/categories', 'productCategory', '-- เลือกหมวดหมู่สินค้า --'),
-            loadSelectOptions('api/suppliers', 'productSupplier', '-- เลือกผู้จัดจำหน่าย --')
-        ]);
+function loadInitialData() {
+    // 1. ดึงข้อมูลสินค้าทันที
+    fetchProducts();
 
-        // โหลดรายการสินค้า
-        await fetchProducts();
-
-    } catch (e) {
-        console.error('Error loading initial data:', e);
-    }
+    // 2. โหลด Dropdown หมวดหมู่และผู้จัดจำหน่ายคู่ขนาน
+    loadSelectOptions('api/categories', 'filterCategory', 'หมวดหมู่ทั้งหมด (All Categories)');
+    loadSelectOptions('api/suppliers', 'filterSupplier', 'ผู้จัดจำหน่ายทั้งหมด (All Suppliers)');
+    loadSelectOptions('api/categories', 'productCategory', '-- เลือกหมวดหมู่สินค้า --');
+    loadSelectOptions('api/suppliers', 'productSupplier', '-- เลือกผู้จัดจำหน่าย --');
 }
 
 /**
